@@ -10,7 +10,9 @@ s.sevenDay = .init(utilization: 38, resetsAt: now.addingTimeInterval(3*86400+5*3
 s.scoped = [.init(name: "Opus", percent: 21)]
 s.breakdown = [.init(name: "Claude Code", percent: 84), .init(name: "Chats", percent: 11), .init(name: "Cowork", percent: 5)]
 s.fetchedAt = now
-let sizes: [(WidgetFamily, CGSize, String)] = [(.systemSmall, .init(width: 158, height: 158), "small"), (.systemMedium, .init(width: 364, height: 158), "medium"), (.systemLarge, .init(width: 364, height: 382), "large")]
+s.modelsSession = UsageSnapshot.placeholder.modelsSession
+s.modelsWeek = UsageSnapshot.placeholder.modelsWeek
+let sizes: [(WidgetFamily, CGSize, String)] = [(.systemSmall, .init(width: 158, height: 158), "small"), (.systemMedium, .init(width: 364, height: 158), "medium"), (.systemLarge, .init(width: 364, height: 382), "large"), (.systemExtraLarge, .init(width: 760, height: 382), "xlarge")]
 for dark in [false, true] { for (fam, size, name) in sizes {
   let v = UsageWidgetView(family: fam, entry: Entry(date: now, snapshot: s))
     .padding(16).frame(width: size.width, height: size.height)

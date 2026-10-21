@@ -17,7 +17,8 @@ final class UsageModel: ObservableObject {
     func refresh() {
         Task {
             do {
-                let s = try await UsageFetcher.fetch()
+                var s = try await UsageFetcher.fetch()
+                (s.modelsSession, s.modelsWeek) = await ModelUsageScanner.shared.scan()
                 snapshot = s
                 UsageStore.save(s)
             } catch {
@@ -41,6 +42,13 @@ struct ClaudeUsageApp: App {
                 if let email = s.email { Text("\(email)\(s.plan.map { " · \($0)" } ?? "")") }
                 Text("5 horas: \(Int(s.fiveHour.utilization))% · reseta em \(formatRemaining(s.fiveHour.resetsAt))")
                 Text("Semanal: \(Int(s.sevenDay.utilization))% · reseta em \(formatRemaining(s.sevenDay.resetsAt))")
+                if !s.modelsWeek.isEmpty {
+                    Divider()
+                    Text("Modelos · 7 dias (Claude Code)")
+                    ForEach(s.modelsWeek, id: \.self) { m in
+                        Text("\(m.name): \(formatTokens(m.tokens)) tokens · \(Int(m.share))%")
+                    }
+                }
                 if let e = s.error { Text("⚠️ \(e)") }
                 Text("Atualizado \(s.fetchedAt.formatted(date: .omitted, time: .shortened))")
             }

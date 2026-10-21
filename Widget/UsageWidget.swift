@@ -106,51 +106,126 @@ struct Footer: View {
     }
 }
 
+struct ModelList: View {
+    let title: String
+    let models: [ModelUsage]
+    var limit = 4
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            if models.isEmpty {
+                Text("Sem uso no período").font(.caption2).foregroundStyle(.tertiary)
+            }
+            ForEach(models.prefix(limit), id: \.self) { m in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(m.name).font(.caption.bold())
+                        Spacer()
+                        Text("\(formatTokens(m.tokens)) · \(Int(m.share.rounded()))%")
+                            .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(.quaternary)
+                            Capsule().fill(accent.opacity(0.75)).frame(width: geo.size.width * m.share / 100)
+                        }
+                    }
+                    .frame(height: 3)
+                }
+            }
+        }
+    }
+}
+
+struct ScopedRows: View {
+    let s: UsageSnapshot
+    var body: some View {
+        ForEach(s.scoped, id: \.self) { l in
+            HStack {
+                Text("Semanal · \(l.name)").foregroundStyle(.secondary)
+                Spacer()
+                Text("\(Int(l.percent))%").bold().foregroundStyle(color(for: l.percent))
+            }
+            .font(.caption)
+        }
+    }
+}
+
+struct ProductRows: View {
+    let s: UsageSnapshot
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Uso semanal por produto").font(.caption).foregroundStyle(.secondary)
+            ForEach(s.breakdown, id: \.self) { r in
+                HStack {
+                    Text(r.name).font(.caption)
+                    Spacer()
+                    Text("\(Int(r.percent))%").font(.caption.monospacedDigit())
+                }
+            }
+        }
+    }
+}
+
 struct UsageWidgetView: View {
     @Environment(\.widgetFamily) var family
     let entry: Entry
 
     var body: some View {
+        content.containerBackground(.fill.tertiary, for: .widget)
+    }
+
+    @ViewBuilder var content: some View {
         let s = entry.snapshot
-        VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 8) {
-            Header(s: s)
-            let session = Gauge(title: "Sessão (5h)", window: s.fiveHour, windowLength: 5 * 3600,
-                                now: entry.date, showPace: family != .systemSmall)
-            let weekly = Gauge(title: "Semanal", window: s.sevenDay, windowLength: 7 * 86400,
-                               now: entry.date, showPace: family != .systemSmall)
-            if family == .systemMedium {
+        let session = Gauge(title: "Sessão (5h)", window: s.fiveHour, windowLength: 5 * 3600,
+                            now: entry.date, showPace: family != .systemSmall)
+        let weekly = Gauge(title: "Semanal", window: s.sevenDay, windowLength: 7 * 86400,
+                           now: entry.date, showPace: family != .systemSmall)
+        switch family {
+        case .systemSmall:
+            VStack(alignment: .leading, spacing: 8) { Header(s: s); session; weekly }
+        case .systemMedium:
+            VStack(alignment: .leading, spacing: 8) {
+                Header(s: s)
                 HStack(alignment: .top, spacing: 16) { session; weekly }
-            } else {
+                ScopedRows(s: s)
+                Spacer(minLength: 0)
+                Footer(s: s)
+            }
+        case .systemLarge:
+            VStack(alignment: .leading, spacing: 10) {
+                Header(s: s)
                 session
                 weekly
-            }
-            if family != .systemSmall {
-                ForEach(s.scoped, id: \.self) { l in
-                    HStack {
-                        Text("Semanal · \(l.name)").foregroundStyle(.secondary)
-                        Spacer()
-                        Text("\(Int(l.percent))%").bold().foregroundStyle(color(for: l.percent))
-                    }
-                    .font(.caption)
-                }
-            }
-            if family == .systemLarge, !s.breakdown.isEmpty {
+                ScopedRows(s: s)
                 Divider()
-                Text("Uso semanal por produto").font(.caption).foregroundStyle(.secondary)
-                ForEach(s.breakdown, id: \.self) { r in
-                    HStack {
-                        Text(r.name).font(.caption)
-                        Spacer()
-                        Text("\(Int(r.percent))%").font(.caption.monospacedDigit())
+                HStack(alignment: .top, spacing: 16) {
+                    ModelList(title: "Modelos · 5h", models: s.modelsSession, limit: 3)
+                    ModelList(title: "Modelos · 7 dias", models: s.modelsWeek, limit: 3)
+                }
+                Spacer(minLength: 0)
+                Footer(s: s)
+            }
+        default: // .systemExtraLarge
+            VStack(alignment: .leading, spacing: 10) {
+                Header(s: s)
+                HStack(alignment: .top, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        session
+                        weekly
+                        ScopedRows(s: s)
+                        if !s.breakdown.isEmpty { Divider(); ProductRows(s: s) }
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        ModelList(title: "Modelos · últimas 5h", models: s.modelsSession, limit: 3)
+                        ModelList(title: "Modelos · 7 dias", models: s.modelsWeek, limit: 4)
                     }
                 }
-            }
-            if family != .systemSmall {
                 Spacer(minLength: 0)
                 Footer(s: s)
             }
         }
-        .containerBackground(.fill.tertiary, for: .widget)
     }
 }
 
@@ -159,7 +234,7 @@ struct UsageWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "UsageWidget", provider: Provider()) { UsageWidgetView(entry: $0) }
             .configurationDisplayName("Uso do Claude")
-            .description("Conta, plano, limite de 5 horas e semanal.")
-            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+            .description("Conta, plano, limites de 5 horas e semanal e uso por modelo.")
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }

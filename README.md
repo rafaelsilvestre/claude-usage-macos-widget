@@ -9,20 +9,31 @@ Widget de área de trabalho (WidgetKit) que mostra em tempo real quanto do seu p
 <p align="center">
   <img src="docs/images/widget-large-dark.png" width="420" alt="Widget grande no modo escuro">
 </p>
+<p align="center">
+  <img src="docs/images/widget-xlarge.png" width="840" alt="Widget extra grande">
+</p>
 
 > As imagens usam dados fictícios. Geradas a partir das views reais do widget com `scripts/render-previews.sh`.
 
 ## O que o widget mostra
 
-| Informação | Pequeno | Médio | Grande |
-|---|:-:|:-:|:-:|
-| E-mail da conta e plano (Pro, Max 5x, Max 20x) | ✅ | ✅ | ✅ |
-| Sessão (5h): % usado e tempo até resetar | ✅ | ✅ | ✅ |
-| Semanal: % usado e tempo até resetar | ✅ | ✅ | ✅ |
-| Ritmo de uso (acima/abaixo do esperado) | marcador | ✅ | ✅ |
-| Limite semanal por modelo (ex.: Opus) | | ✅ | ✅ |
-| Uso semanal por produto (Claude Code, Chats, Cowork…) | | | ✅ |
-| Horário da última atualização / erro | | ✅ | ✅ |
+| Informação | Pequeno | Médio | Grande | Extra grande |
+|---|:-:|:-:|:-:|:-:|
+| E-mail da conta e plano (Pro, Max 5x, Max 20x) | ✅ | ✅ | ✅ | ✅ |
+| Sessão (5h): % usado e tempo até resetar | ✅ | ✅ | ✅ | ✅ |
+| Semanal: % usado e tempo até resetar | ✅ | ✅ | ✅ | ✅ |
+| Ritmo de uso (acima/abaixo do esperado) | marcador | ✅ | ✅ | ✅ |
+| Limite semanal por modelo (ex.: Opus) | | ✅ | ✅ | ✅ |
+| Tokens por modelo nas últimas 5h e 7 dias | | | ✅ | ✅ |
+| Uso semanal por produto (Claude Code, Chats, Cowork…) | | | | ✅ |
+| Horário da última atualização / erro | | ✅ | ✅ | ✅ |
+
+### Uso por modelo
+
+A API de limites não informa quanto cada modelo consumiu, então o app lê os logs locais do Claude Code (`~/.claude/projects/**/*.jsonl`, respeitando `CLAUDE_CONFIG_DIR`). Ele soma os tokens de entrada, saída e escrita de cache (leituras de cache ficam de fora) de cada resposta, por modelo, nas últimas 5 horas e nos últimos 7 dias, e mostra o total e a fatia de cada modelo.
+
+- Só conta o uso **do Claude Code nesta máquina**. Conversas no claude.ai, no app desktop ou em outros computadores não aparecem aqui, embora contem para os limites.
+- A primeira leitura pode levar alguns segundos. Depois disso, o app só lê o que foi adicionado aos arquivos.
 
 ### Como ler o ritmo
 
@@ -64,7 +75,7 @@ Depois, adicione o widget:
 
 1. Clique com o botão direito na área de trabalho → **Editar Widgets…**
 2. Procure **Uso do Claude**
-3. Escolha o tamanho (pequeno, médio ou grande) e arraste para a área de trabalho ou para a Central de Notificações
+3. Escolha o tamanho (pequeno, médio, grande ou extra grande) e arraste para a área de trabalho ou para a Central de Notificações
 
 No menu da barra superior (ícone `✳︎ 62%`), marque **Abrir no login** para o app continuar atualizando o widget depois de reiniciar o Mac.
 
@@ -85,9 +96,10 @@ No menu da barra superior (ícone `✳︎ 62%`), marque **Abrir no login** para 
 ```
 
 1. **Credenciais.** O app lê o token OAuth que o Claude Code guarda no Keychain (item `Claude Code-credentials`), usando `/usr/bin/security`. Nenhuma senha é pedida ou armazenada pelo app.
-2. **Consulta.** A cada 60 segundos, chama os mesmos endpoints que o Claude Code usa para exibir seus limites: `/api/oauth/usage` (porcentagens e horários de reset) e `/api/oauth/profile` (e-mail e plano, buscado uma vez por execução).
-3. **Compartilhamento.** O resultado é salvo em `~/Library/Group Containers/<App Group>/usage.json`, e o app pede ao WidgetKit para recarregar o widget.
-4. **Widget.** A extensão roda em sandbox e só lê esse arquivo. A linha do tempo tem uma entrada por minuto, então a contagem regressiva continua andando mesmo entre recargas.
+2. **Logs locais.** Para o uso por modelo, lê de forma incremental os arquivos `.jsonl` do Claude Code modificados nos últimos 7 dias.
+3. **Consulta.** A cada 60 segundos, chama os mesmos endpoints que o Claude Code usa para exibir seus limites: `/api/oauth/usage` (porcentagens e horários de reset) e `/api/oauth/profile` (e-mail e plano, buscado uma vez por execução).
+4. **Compartilhamento.** O resultado é salvo em `~/Library/Group Containers/<App Group>/usage.json`, e o app pede ao WidgetKit para recarregar o widget.
+5. **Widget.** A extensão roda em sandbox e só lê esse arquivo. A linha do tempo tem uma entrada por minuto, então a contagem regressiva continua andando mesmo entre recargas.
 
 ### Estrutura
 
@@ -95,6 +107,7 @@ No menu da barra superior (ícone `✳︎ 62%`), marque **Abrir no login** para 
 App/                 app da barra de menus (busca dados, menu, abrir no login)
   ClaudeUsageApp.swift
   UsageFetcher.swift
+  ModelUsageScanner.swift   tokens por modelo a partir dos logs do Claude Code
 Widget/              extensão WidgetKit (views e timeline)
   UsageWidget.swift
 Shared/              modelo e armazenamento compartilhados via App Group
