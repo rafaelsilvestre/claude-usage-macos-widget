@@ -1,0 +1,50 @@
+name: ClaudeUsage
+options:
+  bundleIdPrefix: com.rafaelsilvestre
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: G9PHDKA735
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  ClaudeUsage:
+    type: application
+    platform: macOS
+    sources: [App, Shared]
+    info:
+      path: App/Info.plist
+      properties:
+        LSUIElement: true
+        CFBundleDisplayName: Claude Usage
+    entitlements:
+      path: App/App.entitlements
+      properties:
+        com.apple.security.application-groups: [G9PHDKA735.com.rafaelsilvestre.claudeusage]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rafaelsilvestre.claudeusage
+        ENABLE_HARDENED_RUNTIME: YES
+    dependencies:
+      - target: UsageWidget
+  UsageWidget:
+    type: app-extension
+    platform: macOS
+    sources: [Widget, Shared]
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Claude Usage
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/Widget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups: [G9PHDKA735.com.rafaelsilvestre.claudeusage]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rafaelsilvestre.claudeusage.widget
